@@ -1,0 +1,123 @@
+.footer {
+  background: var(--void);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Main grid */
+.inner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr;
+  gap: 3rem;
+  padding-top: 3.5rem;
+  padding-bottom: 3rem;
+}
+
+/* Brand column */
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+  color: var(--text-light);
+}
+
+.tagline {
+  font-size: 0.9rem;
+  color: rgba(239, 241, 231, 0.5);
+  line-height: 1.65;
+}
+
+.domain {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--lime-flash);
+  opacity: 0.7;
+}
+
+/* Nav column */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.navTitle {
+  color: rgba(239, 241, 231, 0.35);
+  margin-bottom: 0.25rem;
+}
+
+.navLink {
+  font-size: 0.9rem;
+  color: rgba(239, 241, 231, 0.6);
+  text-align: left;
+  transition: color var(--ease-fast);
+  line-height: 1.5;
+}
+.navLink:hover { color: var(--lime-flash); }
+
+/* Contact column */
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.contactLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--lime-flash);
+  transition: opacity var(--ease-fast);
+}
+.contactLink:hover { opacity: 0.75; }
+
+.footerNote {
+  font-size: 0.8rem;
+  color: rgba(239, 241, 231, 0.35);
+  line-height: 1.6;
+}
+
+/* Bottom bar */
+.bottomBar {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 1.25rem 0;
+}
+
+.bottomBar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.copy,
+.madeWith {
+  font-size: 0.8rem;
+  color: rgba(239, 241, 231, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .inner { grid-template-columns: 1fr 1fr; }
+  .brand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 480px) {
+  .inner { grid-template-columns: 1fr; }
+  .bottomBar .container { flex-direction: column; text-align: center; }
+}

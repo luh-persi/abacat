@@ -1,0 +1,303 @@
+.hero {
+  position: relative;
+  min-height: 100vh;
+  background: var(--deep-avo);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Radial bloom behind mascot */
+.bloom {
+  position: absolute;
+  top: 5%;
+  right: 2%;
+  width: 640px;
+  height: 640px;
+  background: radial-gradient(ellipse at center,
+    rgba(200, 216, 50, 0.09) 0%,
+    rgba(30, 64, 17, 0.06) 45%,
+    transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 0;
+  animation: pulse-glow 5s ease-in-out infinite;
+}
+
+/* Main content grid */
+.content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 2rem;
+  padding-top: 130px;
+  padding-bottom: 130px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Text Side ── */
+.textSide {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+/* Eyebrow tag */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.eyebrowDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lime-flash);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(200, 216, 50, 0.8);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Big headline */
+.headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05em;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 4.8vw, 5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.026em;
+}
+
+.line1 {
+  display: block;
+  color: var(--text-light);
+  opacity: 0;
+}
+
+.line2 {
+  display: block;
+  color: var(--lime-flash);
+  opacity: 0;
+  /* Shimmer on lime line */
+  background: linear-gradient(
+    90deg,
+    var(--lime-flash) 0%,
+    #eefa50 40%,
+    var(--lime-flash) 60%,
+    #a8b820 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text 5s linear infinite 2s;
+}
+
+/* Subtitle */
+.subtitle {
+  font-size: clamp(1rem, 1.4vw, 1.18rem);
+  color: rgba(239, 241, 231, 0.68);
+  line-height: 1.72;
+  max-width: 510px;
+  opacity: 0;
+}
+
+/* CTAs */
+.ctas {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ctaPrimary,
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 600;
+  padding: 13px 26px;
+  border-radius: var(--radius-full);
+  transition: transform var(--ease-fast), box-shadow var(--ease-fast),
+              background var(--ease-fast), border-color var(--ease-fast);
+  opacity: 0;
+}
+
+.ctaPrimary {
+  background: var(--lime-flash);
+  color: var(--text-dark);
+}
+.ctaPrimary:hover {
+  background: #d8ea3a;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(200, 216, 50, 0.45);
+}
+.ctaPrimary svg { transition: transform var(--ease-fast); }
+.ctaPrimary:hover svg { transform: translateX(3px); }
+
+.ctaSecondary {
+  background: transparent;
+  color: var(--text-light);
+  border: 1.5px solid rgba(239, 241, 231, 0.22);
+}
+.ctaSecondary:hover {
+  border-color: rgba(200, 216, 50, 0.6);
+  color: var(--lime-flash);
+  transform: translateY(-2px);
+}
+
+/* Stat pills */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: rgba(239, 241, 231, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 5px 13px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+  opacity: 0;
+}
+
+.statDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Click hint */
+.clickHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: rgba(239, 241, 231, 0.3);
+  letter-spacing: 0.05em;
+  margin-top: -0.2rem;
+  animation: fade-up 0.6s ease 2.2s both;
+}
+
+/* ── Mascot Side ── */
+.mascotSide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 540px;
+  opacity: 0;
+}
+
+/* Glow rings behind mascot */
+.aura {
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(ellipse,
+    rgba(200, 216, 50, 0.14) 0%,
+    transparent 68%);
+  border-radius: 50%;
+  animation: pulse-glow 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.auraInner {
+  position: absolute;
+  width: 46%;
+  height: 46%;
+  background: radial-gradient(ellipse,
+    rgba(200, 216, 50, 0.2) 0%,
+    transparent 70%);
+  border-radius: 50%;
+  animation: pulse-glow 3s ease-in-out infinite 0.8s;
+  pointer-events: none;
+}
+
+/* ── Scroll indicator ── */
+.scrollIndicator {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  z-index: 3;
+  opacity: 0;
+}
+
+.scrollLabel {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.scrollArrow {
+  animation: bounce-y 1.8s ease-in-out infinite;
+}
+
+/* ── Bottom curve ── */
+.curveBottom {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  line-height: 0;
+}
+.curveBottom svg {
+  display: block;
+  width: 100%;
+  height: 80px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .content {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding-top: 110px;
+    padding-bottom: 170px;
+    gap: 2rem;
+  }
+  .textSide { align-items: center; }
+  .subtitle  { margin: 0 auto; }
+  .stats     { justify-content: center; }
+  .ctas      { justify-content: center; }
+  .clickHint { justify-content: center; }
+  .mascotSide { order: -1; min-height: 340px; }
+  .bloom { display: none; }
+  .scrollIndicator { bottom: 115px; }
+}
+
+@media (max-width: 480px) {
+  .headline { font-size: 2.2rem; }
+  .ctaPrimary, .ctaSecondary { width: 100%; justify-content: center; }
+  .ctas { flex-direction: column; }
+}

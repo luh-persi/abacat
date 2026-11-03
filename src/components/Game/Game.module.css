@@ -1,0 +1,287 @@
+/* ── Game Section ─────────────────────────────────────── */
+.section {
+  background: var(--deep-avo);
+  padding: 7rem 0 6rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle dot grid background */
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(200, 216, 50, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+/* ── Header ───────────────────────────────────────────── */
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  color: var(--text-light);
+  line-height: 1.12;
+  margin: 0.5rem 0 1rem;
+  letter-spacing: -0.022em;
+}
+
+.accent {
+  color: var(--lime-flash);
+}
+
+.sub {
+  font-size: 1.05rem;
+  color: rgba(239, 241, 231, 0.65);
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── Game wrap ────────────────────────────────────────── */
+.gameWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Game container ───────────────────────────────────── */
+.gameContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(700px, 100%);
+}
+
+/* ── 3D stage ─────────────────────────────────────────── */
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 700 / 460;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1.5px solid rgba(200, 216, 50, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 32px 64px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(200, 216, 50, 0.08);
+  background: #060e04;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.hud {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  font-family: var(--font-display);
+  color: var(--lime-flash);
+}
+
+.lives {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 1.15rem;
+}
+
+.lives span { opacity: 0.22; }
+.lifeOn { opacity: 1 !important; }
+
+.score {
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-shadow: 0 0 12px rgba(200, 216, 50, 0.45);
+}
+
+.combo {
+  position: absolute;
+  z-index: 2;
+  top: 40px;
+  left: 16px;
+  color: #ffd700;
+  font-family: var(--font-display);
+  font-weight: 700;
+  pointer-events: none;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.55);
+}
+
+.toast {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  color: var(--lime-flash);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.35rem;
+  pointer-events: none;
+  text-shadow: 0 0 18px rgba(200, 216, 50, 0.75);
+}
+
+.banner {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.banner strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  font-weight: 800;
+  color: var(--lime-flash);
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 18px rgba(200, 216, 50, 0.35);
+}
+
+.bannerBad { color: var(--ear-coral) !important; text-shadow: none !important; }
+
+.banner p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: rgba(239, 241, 231, 0.82);
+}
+
+.hint {
+  font-size: 0.78rem !important;
+  color: rgba(200, 216, 50, 0.75) !important;
+}
+
+.flashOk,
+.flashBad {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: game-fade 0.4s ease forwards;
+}
+
+.flashOk { background: rgba(200, 216, 50, 0.16); }
+.flashBad { background: rgba(255, 48, 48, 0.2); }
+
+@keyframes game-fade {
+  to { opacity: 0; }
+}
+
+/* ── Overlay button ───────────────────────────────────── */
+.overlayBtn {
+  position: absolute;
+  bottom: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 14px 30px;
+  border-radius: var(--radius-full);
+  background: var(--lime-flash);
+  color: var(--text-dark);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  box-shadow: 0 8px 28px rgba(200, 216, 50, 0.38);
+  white-space: nowrap;
+}
+
+.overlayBtn:hover {
+  background: #d8ea3a;
+  transform: translateX(-50%) translateY(100%) translateY(-2px);
+  box-shadow: 0 12px 36px rgba(200, 216, 50, 0.5);
+}
+
+.overlayBtn svg {
+  transition: transform 0.18s ease;
+}
+
+.overlayBtn:hover svg {
+  transform: scale(1.15);
+}
+
+/* ── Live score overlay (visible while playing) ────────── */
+.liveScore {
+  position: absolute;
+  top: -2.8rem;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: rgba(200, 216, 50, 0.7);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.scoreNum {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--lime-flash);
+}
+
+/* ── Note below game ──────────────────────────────────── */
+.note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 3.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: rgba(239, 241, 231, 0.4);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.noteLink {
+  color: var(--lime-flash);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.noteLink:hover {
+  color: #d8ea3a;
+  text-decoration: underline;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 680px) {
+  .stage {
+    border-radius: 12px;
+  }
+
+  .overlayBtn {
+    font-size: 0.9rem;
+    padding: 12px 24px;
+  }
+
+  .heading {
+    font-size: 1.75rem;
+  }
+}
