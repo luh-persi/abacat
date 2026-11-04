@@ -9,7 +9,7 @@ const CANVAS_STYLE = { width: '100%', height: '100%', touchAction: 'none' as con
 const CANVAS_DPR: [number, number] = [1, 1.5]
 
 function tuneCanvas({ gl }: { gl: { setClearColor: (color: string) => void; toneMappingExposure: number } }) {
-  gl.setClearColor('#060e04')
+  gl.setClearColor('#e7f3c8')
   gl.toneMappingExposure = 1.08
 }
 
@@ -126,7 +126,7 @@ export function Game() {
             </strong>
             <p>
               {phase === 'idle'
-                ? 'Pula o que vem baixo, abaixa no que vem alto e junta os pontos.'
+                ? 'Pula cerca e caixote, abaixa na placa e sai da frente do carrinho.'
                 : `Você fez ${hud.score} pontos em ${hud.meters} m`}
             </p>
             {phase === 'idle' && <p className={styles.hint}>Arraste ou ← → · toque ou ↑ pula · ↓ abaixa</p>}

@@ -1,3 +1,4 @@
+import { useGLTF } from '@react-three/drei'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
@@ -43,10 +44,54 @@ const LANES = [-2.15, 0, 2.15] as const
 const POOL = 40
 const BUILDINGS = 14
 const WINDOWS = BUILDINGS * 2
-const COIN = new THREE.Color('#C8D832')
-const SHIELD_COLOR = new THREE.Color('#F6C56B')
-const BUILDING_COLORS = ['#101e0c', '#17301a', '#0d1a0b', '#1c3820', '#142616'].map((hex) => new THREE.Color(hex))
+const TREES = 10
+const STALLS = 8
 const HIT_Z = 0.2
+
+/** Modelos CC0 da Kenney (kenney.nl), servidos em /game/props. */
+const PROP = {
+  crate: '/game/props/platformer/crate.glb',
+  fence: '/game/props/platformer/fence-low-straight.glb',
+  sign: '/game/props/platformer/sign.glb',
+  coin: '/game/props/platformer/coin-gold.glb',
+  cart: '/game/props/mini-market/shopping-cart.glb',
+  avocado: '/game/props/food/avocado.glb',
+  tree: '/game/props/mini-forest/tree.glb',
+  tent: '/game/props/mini-forest/tent.glb',
+  fruit: '/game/props/mini-market/display-fruit.glb',
+} as const
+
+const BIOMES = [
+  {
+    fog: new THREE.Color('#d7e8ae'),
+    bg: new THREE.Color('#e7f3c8'),
+    ground: new THREE.Color('#d2ea9c'),
+    sun: new THREE.Color('#fff6d4'),
+    sky: new THREE.Color('#f4f8dc'),
+    hemi: new THREE.Color('#e8f7c6'),
+    buildings: ['#245016', '#1c4014', '#2c5a1c'].map((hex) => new THREE.Color(hex)),
+  },
+  {
+    fog: new THREE.Color('#f0d3b2'),
+    bg: new THREE.Color('#f7e2c8'),
+    ground: new THREE.Color('#efd0aa'),
+    sun: new THREE.Color('#ffe3c4'),
+    sky: new THREE.Color('#fbe8d2'),
+    hemi: new THREE.Color('#ffe7cc'),
+    buildings: ['#5a3a28', '#6a4630', '#4a3224'].map((hex) => new THREE.Color(hex)),
+  },
+  {
+    fog: new THREE.Color('#121a2e'),
+    bg: new THREE.Color('#10182a'),
+    ground: new THREE.Color('#8ea0bd'),
+    sun: new THREE.Color('#d7e2ff'),
+    sky: new THREE.Color('#1a2744'),
+    hemi: new THREE.Color('#c5d2f2'),
+    buildings: ['#161e30', '#1c2638', '#121826'].map((hex) => new THREE.Color(hex)),
+  },
+]
+
+for (const url of Object.values(PROP)) useGLTF.preload(url)
 
 function emptyItem(): Item {
   return { kind: 'block', lane: 1, at: 0, live: false, prevZ: -99, judged: false }
@@ -69,7 +114,7 @@ function patternFor(at: number, n: number): { parts: Part[]; gap: number } {
   const roll = n % 8
   if (at > 50 && roll === 0) return { parts: [...coins(1, -4.6), { kind: 'low', lane: 3, da: 0 }, ...coins(1, 3.4)], gap }
   if (at > 78 && roll === 1) return { parts: [...coins(1, -4.6), { kind: 'high', lane: 3, da: 0 }, ...coins(1, 3.4)], gap }
-  if (at > 64 && roll === 2) return { parts: [...coins(free, -4.6), { kind: 'sweep', lane: 1, da: 0 }, ...coins(free, 3.4)], gap }
+  if (at > 22 && roll === 2) return { parts: [...coins(free, -4.6), { kind: 'sweep', lane: 1, da: 0 }, ...coins(free, 3.4)], gap }
   if (roll === 3) {
     return {
       parts: [
@@ -106,7 +151,57 @@ function patternFor(at: number, n: number): { parts: Part[]; gap: number } {
   if (roll === 6 && n % 12 === 6) {
     return { parts: [...coins(free, -3), { kind: 'shield', lane: free, da: 0 }, ...coins(free, 2.6)], gap: gap + 1 }
   }
+  if (at > 30 && roll === 7) {
+    return {
+      parts: [
+        { kind: 'coin', lane: 0, da: -5 },
+        { kind: 'coin', lane: 0, da: -3.4 },
+        { kind: 'coin', lane: 1, da: -1.7 },
+        { kind: 'low', lane: 1, da: 0 },
+        { kind: 'coin', lane: 1, da: 1.55 },
+        { kind: 'coin', lane: 2, da: 3.2 },
+        { kind: 'coin', lane: 2, da: 4.7 },
+      ],
+      gap,
+    }
+  }
   return { parts: [...coins(side, -4.6), { kind: 'block', lane, da: 0 }, ...coins(side, 3.2)], gap }
+}
+
+function fittedClone(
+  source: THREE.Object3D,
+  height: number,
+  opts?: { yaw?: number; hang?: boolean; widen?: number },
+) {
+  const model = source.clone(true)
+  model.rotation.y = opts?.yaw ?? 0
+  model.updateWorldMatrix(true, true)
+  const first = new THREE.Box3().setFromObject(model)
+  const scale = height / Math.max(first.getSize(new THREE.Vector3()).y, 1e-4)
+  model.scale.multiplyScalar(scale)
+  if (opts?.widen) model.scale.x *= opts.widen
+  model.updateWorldMatrix(true, true)
+  const box = new THREE.Box3().setFromObject(model)
+  const center = box.getCenter(new THREE.Vector3())
+  model.position.x -= center.x
+  model.position.z -= center.z
+  model.position.y -= opts?.hang ? box.max.y : box.min.y
+  model.traverse((obj) => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh) return
+    mesh.castShadow = false
+    mesh.receiveShadow = false
+  })
+  if (!opts?.hang) return model
+  const pivot = new THREE.Group()
+  pivot.add(model)
+  const rope = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.72, 6),
+    new THREE.MeshStandardMaterial({ color: '#6b4128', roughness: 0.7 }),
+  )
+  rope.position.y = 0.36
+  pivot.add(rope)
+  return pivot
 }
 
 function claim(items: Item[], part: Part, at: number) {
@@ -120,10 +215,69 @@ function claim(items: Item[], part: Part, at: number) {
   slot.judged = false
 }
 
-function paintBox(mesh: THREE.Mesh, color: THREE.Color) {
-  const mat = mesh.material as THREE.MeshStandardMaterial
-  mat.color.copy(color)
-  mat.emissive.copy(color)
+function CourseModels({
+  slots,
+  trees,
+  stalls,
+}: {
+  slots: MutableRefObject<(THREE.Group | null)[]>
+  trees: MutableRefObject<(THREE.Object3D | null)[]>
+  stalls: MutableRefObject<(THREE.Object3D | null)[]>
+}) {
+  const crateG = useGLTF(PROP.crate)
+  const fenceG = useGLTF(PROP.fence)
+  const signG = useGLTF(PROP.sign)
+  const coinG = useGLTF(PROP.coin)
+  const cartG = useGLTF(PROP.cart)
+  const avocadoG = useGLTF(PROP.avocado)
+  const treeG = useGLTF(PROP.tree)
+  const tentG = useGLTF(PROP.tent)
+  const fruitG = useGLTF(PROP.fruit)
+
+  const built = useMemo(() => {
+    const hazards = Array.from({ length: POOL }, () => {
+      const avocado = fittedClone(avocadoG.scene, 0.58)
+      avocado.visible = false
+      return {
+        crate: fittedClone(crateG.scene, 1.02),
+        fence: fittedClone(fenceG.scene, 0.42, { widen: 1.3 }),
+        sign: fittedClone(signG.scene, 0.74, { widen: 2.6, hang: true }),
+        coin: fittedClone(coinG.scene, 0.46),
+        avocado,
+        cart: fittedClone(cartG.scene, 0.92, { yaw: Math.PI / 2 }),
+      }
+    })
+    return {
+      hazards,
+      treeRow: Array.from({ length: TREES }, () => fittedClone(treeG.scene, 2.45)),
+      stallRow: Array.from({ length: STALLS }, (_, i) =>
+        fittedClone(i % 2 === 0 ? tentG.scene : fruitG.scene, i % 2 === 0 ? 1.7 : 1.2),
+      ),
+    }
+  }, [crateG, fenceG, signG, coinG, cartG, avocadoG, treeG, tentG, fruitG])
+
+  return (
+    <>
+      {built.hazards.map((hazard, i) => (
+        <group key={i} ref={(node) => { slots.current[i] = node }} visible={false}>
+          <group><primitive object={hazard.crate} /></group>
+          <group><primitive object={hazard.fence} /></group>
+          <group><primitive object={hazard.sign} /></group>
+          <group><primitive object={hazard.cart} /></group>
+          <group>
+            <primitive object={hazard.coin} />
+            <primitive object={hazard.avocado} />
+          </group>
+        </group>
+      ))}
+      {built.treeRow.map((tree, i) => (
+        <primitive key={`tree-${i}`} object={tree} ref={(node: THREE.Object3D | null) => { trees.current[i] = node }} />
+      ))}
+      {built.stallRow.map((stall, i) => (
+        <primitive key={`stall-${i}`} object={stall} ref={(node: THREE.Object3D | null) => { stalls.current[i] = node }} />
+      ))}
+    </>
+  )
 }
 
 function useFloorMap() {
@@ -135,13 +289,13 @@ function useFloorMap() {
     canvas.height = height
     const ctx = canvas.getContext('2d')
     if (!ctx) return new THREE.Texture()
-    ctx.fillStyle = '#071208'
+    ctx.fillStyle = '#e7e2d4'
     ctx.fillRect(0, 0, width, height)
-    ctx.fillStyle = '#0d1c0b'
+    ctx.fillStyle = '#f4f1e6'
     for (const lane of [-2.15, 0, 2.15]) {
       ctx.fillRect((lane + 7) * 20 - 24, 0, 48, height)
     }
-    ctx.fillStyle = 'rgba(200, 216, 50, 0.72)'
+    ctx.fillStyle = 'rgba(90, 110, 40, 0.55)'
     for (const divider of [-1.08, 1.08]) {
       const x = (divider + 7) * 20 - 1.5
       for (let y = 10; y < height; y += 52) ctx.fillRect(x, y, 3, 24)
@@ -164,7 +318,14 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
   const slots = useRef<(THREE.Group | null)[]>([])
   const buildings = useRef<THREE.InstancedMesh>(null)
   const windows = useRef<THREE.InstancedMesh>(null)
-  const painted = useRef(false)
+  const trees = useRef<(THREE.Object3D | null)[]>([])
+  const stalls = useRef<(THREE.Object3D | null)[]>([])
+  const floorMat = useRef<THREE.MeshStandardMaterial>(null)
+  const skirtMat = useRef<THREE.MeshStandardMaterial>(null)
+  const skyMat = useRef<THREE.MeshBasicMaterial>(null)
+  const hemi = useRef<THREE.HemisphereLight>(null)
+  const sun = useRef<THREE.DirectionalLight>(null)
+  const biomeNow = useRef(-1)
   const stride = useRef(0)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const player = useRef<THREE.Group>(null)
@@ -392,7 +553,7 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
         }
       }
       item.prevZ = z
-      if (z > 3.2) item.live = false
+      if (z > 1.05) item.live = false
       if (!group) continue
       if (!item.live) {
         group.visible = false
@@ -407,6 +568,7 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
       const high = group.children[2] as THREE.Group
       const saw = group.children[3] as THREE.Group
       const pickup = group.children[4] as THREE.Group
+      if (!block || !low || !high || !saw || !pickup) continue
       block.visible = item.kind === 'block'
       low.visible = item.kind === 'low'
       high.visible = item.kind === 'high'
@@ -414,41 +576,29 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
       pickup.visible = item.kind === 'coin' || item.kind === 'shield'
 
       let y = 0
-      let rotX = 0
-      let rotY = 0
-      let rotZ = 0
       if (item.kind === 'block') {
-        y = Math.sin(time * 2.1 + item.at) * 0.045
-        rotY = Math.sin(time * 0.8 + item.at) * 0.28
+        y = Math.sin(time * 2.1 + item.at) * 0.03
+        block.rotation.y = Math.sin(time * 0.7 + item.at) * 0.12
       } else if (item.kind === 'low') {
-        y = Math.sin(time * 2.6 + item.at) * 0.02
+        low.scale.x = wide ? 3.35 : 1
+      } else if (item.kind === 'high') {
+        high.scale.x = wide ? 3.5 : 1
+        const pivot = high.children[0]
+        if (pivot) pivot.rotation.z = Math.sin(time * 1.7 + item.at) * 0.34
+        y = 1.86
       } else if (item.kind === 'sweep') {
-        y = 0.58
-        rotX = time * 1.6
-        rotY = time * 2.3 + item.at
+        const heading = Math.cos(time * 1.25)
+        saw.rotation.y = heading >= 0 ? 0 : Math.PI
       } else if (item.kind === 'coin' || item.kind === 'shield') {
-        y = 0.78 + Math.sin(time * 4 + item.at) * 0.08
-        rotY = time * 2.2
-        const gem = pickup.children[0] as THREE.Mesh
-        const ring = pickup.children[1] as THREE.Mesh
-        paintBox(gem, item.kind === 'shield' ? SHIELD_COLOR : COIN)
-        gem.scale.setScalar(item.kind === 'shield' ? 1.25 : 1)
-        ring.visible = item.kind === 'shield'
-      }
-      if (item.kind === 'low' || item.kind === 'high') {
-        const gate = item.kind === 'low' ? low : high
-        const bar = gate.children[2] as THREE.Mesh
-        const postL = gate.children[0] as THREE.Mesh
-        const postR = gate.children[1] as THREE.Mesh
-        bar.scale.y = wide ? 3.7 : 1
-        const postX = wide ? 2.85 : item.kind === 'low' ? 0.68 : 0.74
-        postL.position.x = -postX
-        postR.position.x = postX
+        y = 0.72 + Math.sin(time * 4 + item.at) * 0.08
+        pickup.rotation.y = time * 2.1
+        if (pickup.children[0]) pickup.children[0].visible = item.kind === 'coin'
+        if (pickup.children[1]) pickup.children[1].visible = item.kind === 'shield'
       }
 
       group.visible = true
       group.position.set(ix, y, z)
-      group.rotation.set(rotX, rotY, rotZ)
+      group.rotation.set(0, 0, 0)
       const arrive = THREE.MathUtils.smoothstep(z, -22, -12)
       group.scale.setScalar(0.86 + arrive * 0.14)
     }
@@ -476,20 +626,38 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
     }
     if (crashedNow) bridge.current.onCrash()
 
+    const biomeIndex = Math.floor(travel.current / 110) % 3
+    const biome = BIOMES[biomeIndex]
+    const blend = Math.min(1, step * 1.6)
+    const fog = state.scene.fog as THREE.Fog | null
+    if (fog) fog.color.lerp(biome.fog, blend)
+    const background = state.scene.background
+    if (background instanceof THREE.Color) background.lerp(biome.bg, blend)
+    floorMat.current?.color.lerp(biome.ground, blend)
+    skirtMat.current?.color.copy(biome.ground).multiplyScalar(0.55)
+    skyMat.current?.color.lerp(biome.sky, blend)
+    if (hemi.current) hemi.current.color.lerp(biome.hemi, blend)
+    if (sun.current) sun.current.color.lerp(biome.sun, blend)
+
     const city = buildings.current
     if (city) {
-      if (!painted.current) {
-        for (let i = 0; i < BUILDINGS; i++) city.setColorAt(i, BUILDING_COLORS[i % BUILDING_COLORS.length])
+      if (biomeNow.current !== biomeIndex) {
+        biomeNow.current = biomeIndex
+        for (let i = 0; i < BUILDINGS; i++) city.setColorAt(i, biome.buildings[i % biome.buildings.length])
         if (city.instanceColor) city.instanceColor.needsUpdate = true
-        painted.current = true
+        const winMat = windows.current?.material
+        if (winMat && !Array.isArray(winMat)) {
+          const mat = winMat as THREE.MeshStandardMaterial
+          mat.emissiveIntensity = biomeIndex === 2 ? 1.35 : biomeIndex === 1 ? 0.35 : 0.08
+        }
       }
       for (let i = 0; i < BUILDINGS; i++) {
         const side = i % 2 === 0 ? -1 : 1
         const span = 70
         const z = (((i * 10 + travel.current) % span) + span) % span - 46
-        const height = 1.5 + (i % 5) * 0.7
-        dummy.position.set(side * 5.55, height / 2, z)
-        dummy.scale.set(1.45, height, 1.7 + (i % 3) * 0.35)
+        const height = biomeIndex === 0 ? 0 : (1.4 + (i % 5) * 0.62) * (biomeIndex === 1 ? 0.55 : 1)
+        dummy.position.set(side * 5.7, height / 2, z)
+        dummy.scale.set(biomeIndex === 0 ? 0 : 1.45, height, 1.7 + (i % 3) * 0.35)
         dummy.rotation.set(0, 0, 0)
         dummy.updateMatrix()
         city.setMatrixAt(i, dummy.matrix)
@@ -504,15 +672,35 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
         const side = b % 2 === 0 ? -1 : 1
         const span = 70
         const z = (((b * 10 + travel.current) % span) + span) % span - 46
-        const height = 1.5 + (b % 5) * 0.7
-        const lit = (b + level) % 4 !== 0
-        dummy.position.set(side * 4.82, 0.42 + level * height * 0.36, z)
+        const height = biomeIndex === 0 ? 0 : (1.4 + (b % 5) * 0.62) * (biomeIndex === 1 ? 0.55 : 1)
+        const lit = biomeIndex === 2 && (b + level) % 3 !== 0
+        dummy.position.set(side * 4.96, 0.42 + level * height * 0.36, z)
         dummy.scale.set(lit ? 0.05 : 0, lit ? 0.16 : 0, lit ? 0.26 : 0)
         dummy.rotation.set(0, 0, 0)
         dummy.updateMatrix()
         win.setMatrixAt(i, dummy.matrix)
       }
       win.instanceMatrix.needsUpdate = true
+    }
+    for (let i = 0; i < TREES; i++) {
+      const tree = trees.current[i]
+      if (!tree) continue
+      tree.visible = biomeIndex === 0
+      const side = i % 2 === 0 ? -1 : 1
+      const span = 78
+      const z = (((i * 13 + travel.current) % span) + span) % span - 50
+      tree.position.set(side * (4.35 + (i % 3) * 0.35), 0, z)
+      tree.rotation.y = i * 0.7
+    }
+    for (let i = 0; i < STALLS; i++) {
+      const stall = stalls.current[i]
+      if (!stall) continue
+      stall.visible = biomeIndex === 1
+      const side = i % 2 === 0 ? -1 : 1
+      const span = 72
+      const z = (((i * 14 + travel.current) % span) + span) % span - 48
+      stall.position.set(side * 4.15, 0, z)
+      stall.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2
     }
 
     const fast = Math.max(0, speed.current - 8)
@@ -575,25 +763,25 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
 
   return (
     <>
-      <color attach="background" args={['#060e04']} />
-      <fog attach="fog" args={['#071208', 12, 38]} />
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={['#e7f0b8', '#071407', 0.55]} />
-      <directionalLight position={[2.4, 6.5, 5]} intensity={2.4} color="#fff6e8" />
-      <directionalLight position={[0, 3.2, -10]} intensity={1.15} color="#d5e86a" />
-      <pointLight position={[0, 1.6, 2.2]} intensity={2.2} distance={8} color="#fff4d4" />
+      <color attach="background" args={['#e7f3c8']} />
+      <fog attach="fog" args={['#d7e8ae', 14, 40]} />
+      <ambientLight intensity={0.62} />
+      <hemisphereLight ref={hemi} args={['#e8f7c6', '#6a8a3a', 0.7]} />
+      <directionalLight ref={sun} position={[2.4, 6.5, 5]} intensity={2.5} color="#fff6d4" />
+      <directionalLight position={[0, 3.2, -10]} intensity={0.85} color="#fff1cf" />
+      <pointLight position={[0, 1.6, 2.2]} intensity={1.4} distance={9} color="#fff4d4" />
 
       <mesh position={[0, 7.5, -34]}>
         <planeGeometry args={[80, 22]} />
-        <meshBasicMaterial color="#10240e" />
+        <meshBasicMaterial ref={skyMat} color="#f4f8dc" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -8]}>
         <planeGeometry args={[36, 64]} />
-        <meshStandardMaterial color="#050c04" roughness={1} />
+        <meshStandardMaterial ref={skirtMat} color="#7ea85a" roughness={1} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -8]}>
         <planeGeometry args={[14, 56]} />
-        <meshStandardMaterial map={floor} roughness={0.84} metalness={0.04} />
+        <meshStandardMaterial ref={floorMat} map={floor} color="#d2ea9c" roughness={0.84} metalness={0.04} />
       </mesh>
 
       <instancedMesh ref={buildings} args={[undefined, undefined, BUILDINGS]}>
@@ -616,72 +804,9 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
         </mesh>
       ))}
 
-      {Array.from({ length: POOL }, (_, i) => (
-        <group key={i} ref={(node) => { slots.current[i] = node }} visible={false}>
-          <group>
-            <mesh position={[0, 0.58, 0]}>
-              <boxGeometry args={[1.02, 1.02, 1.02]} />
-              <meshStandardMaterial color="#162812" roughness={0.46} metalness={0.12} />
-            </mesh>
-            <mesh position={[0, 0.58, 0.52]}>
-              <boxGeometry args={[1.06, 0.1, 0.04]} />
-              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={0.85} />
-            </mesh>
-            <mesh position={[0, 1.1, 0]}>
-              <boxGeometry args={[1.06, 0.06, 1.06]} />
-              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={0.4} />
-            </mesh>
-          </group>
-          <group>
-            <mesh position={[-0.68, 0.28, 0]}>
-              <cylinderGeometry args={[0.055, 0.08, 0.56, 8]} />
-              <meshStandardMaterial color="#3a1814" roughness={0.55} />
-            </mesh>
-            <mesh position={[0.68, 0.28, 0]}>
-              <cylinderGeometry args={[0.055, 0.08, 0.56, 8]} />
-              <meshStandardMaterial color="#3a1814" roughness={0.55} />
-            </mesh>
-            <mesh position={[0, 0.48, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.065, 0.065, 1.5, 12]} />
-              <meshStandardMaterial color="#F4907A" emissive="#F4907A" emissiveIntensity={0.28} />
-            </mesh>
-          </group>
-          <group>
-            <mesh position={[-0.74, 0.72, 0]}>
-              <cylinderGeometry args={[0.05, 0.07, 1.44, 8]} />
-              <meshStandardMaterial color="#241838" roughness={0.5} />
-            </mesh>
-            <mesh position={[0.74, 0.72, 0]}>
-              <cylinderGeometry args={[0.05, 0.07, 1.44, 8]} />
-              <meshStandardMaterial color="#241838" roughness={0.5} />
-            </mesh>
-            <mesh position={[0, 1.32, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.075, 0.075, 1.62, 12]} />
-              <meshStandardMaterial color="#d7ef6a" emissive="#C8D832" emissiveIntensity={0.4} />
-            </mesh>
-          </group>
-          <group>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.46, 0.07, 10, 22]} />
-              <meshStandardMaterial color="#F4907A" emissive="#F4907A" emissiveIntensity={1.15} />
-            </mesh>
-            <mesh>
-              <octahedronGeometry args={[0.2, 0]} />
-              <meshStandardMaterial color="#fff1c4" emissive="#F6C56B" emissiveIntensity={1.5} />
-            </mesh>
-          </group>
-          <group>
-            <mesh>
-              <octahedronGeometry args={[0.26, 0]} />
-              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={1.7} roughness={0.22} />
-            </mesh>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.4, 0.035, 8, 20]} />
-              <meshStandardMaterial color="#F6C56B" emissive="#F6C56B" emissiveIntensity={1.3} />
-            </mesh>
-          </group>
-        </group>
-      ))}
+      <Suspense fallback={null}>
+        <CourseModels slots={slots} trees={trees} stalls={stalls} />
+      </Suspense>
 
       <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0.2]}>
         <circleGeometry args={[0.42, 18]} />
