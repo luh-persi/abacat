@@ -3,12 +3,12 @@ import styles from './WhatWeResolve.module.css'
 
 const ICONS = {
   site: 'M4 5h16v14H4zM4 9h16',
-  marketing: 'M5 16V10M10 16V7M15 16v-5M20 16V5',
-  processos: 'M5 7h14M5 12h14M5 17h9',
-  presenca: 'M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10zM12 11.2a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z',
-  sistemas: 'M8 8H5v3M16 8h3v3M8 16H5v-3M16 16h3v-3M8 9.5h8M8 14.5h8',
-  clientes: 'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
-  manual: 'M5 8h6M5 12h10M5 16h7M16 7l3 3-3 3',
+  marketing: 'M6 19V11M12 19V6M18 19v-7',
+  processos: 'M8 6h12M8 12h12M8 18h8M4 6h.01M4 12h.01M4 18h.01',
+  presenca: 'M12 21s6.5-5.4 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.6 12 21 12 21zM12 13.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z',
+  sistemas: 'M10 13a5 5 0 0 0 7.54.54l1.92-1.92a5 5 0 0 0-7.07-7.07l-1.1 1.1M14 11a5 5 0 0 0-7.54-.54l-1.92 1.92a5 5 0 0 0 7.07 7.07l1.1-1.1',
+  clientes: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 13.2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4z',
+  manual: 'M4 7h6M4 12h10M4 17h7M15 6l4 4-4 4',
 } as const
 
 const PROBLEMS = [
@@ -103,8 +103,8 @@ export function WhatWeResolve() {
                 {/* Front: Problem */}
                 <div className={styles.flipFront}>
                   <span className={styles.flipIcon} aria-hidden="true">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                      <path d={ICONS[item.icon]} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <path d={ICONS[item.icon]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </span>
                   <h3 className={styles.flipTitle}>{item.problem}</h3>
