@@ -15,10 +15,11 @@ function App() {
     const onReveal = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          entry.target.classList.toggle('visible', entry.isIntersecting)
+          if (entry.isIntersecting) entry.target.classList.add('visible')
+          else if (entry.intersectionRatio === 0) entry.target.classList.remove('visible')
         })
       },
-      { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
+      { threshold: 0, rootMargin: '0px 0px -8% 0px' },
     )
     const onSection = new IntersectionObserver(
       (entries) => {

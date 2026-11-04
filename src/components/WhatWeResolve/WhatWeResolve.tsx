@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import styles from './WhatWeResolve.module.css'
 
 const ICONS = {
@@ -65,9 +65,18 @@ const PROBLEMS = [
 
 export function WhatWeResolve() {
   const [open, setOpen] = useState<string | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useLayoutEffect(() => {
+    sectionRef.current?.querySelectorAll('.reveal').forEach((el) => {
+      const rect = el.getBoundingClientRect()
+      const onScreen = rect.bottom > 80 && rect.top < window.innerHeight - 40
+      if (onScreen) el.classList.add('visible')
+    })
+  }, [open])
 
   return (
-    <section id="problemas" className={styles.section}>
+    <section id="problemas" ref={sectionRef} className={styles.section}>
       <div className="container">
         <div className={`${styles.header} reveal`}>
           <span className="tag-label" style={{ color: 'var(--text-muted)' }}>// problemas que resolvemos</span>
@@ -89,6 +98,11 @@ export function WhatWeResolve() {
               aria-pressed={open === item.id}
               aria-label={`${item.problem} — clique para ver a solução`}
               onClick={() => setOpen((current) => (current === item.id ? null : item.id))}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                setOpen((current) => (current === item.id ? null : item.id))
+              }}
             >
               <div className={styles.flipInner}>
                 {/* Front: Problem */}
