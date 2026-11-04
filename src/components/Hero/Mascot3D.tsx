@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import styles from './Mascot3D.module.css'
 
-const MESSAGES = ['Oi! 👋', 'E aí? 😎', 'Me clica!', 'Uhul! 🎉', 'Vamo lá!']
+const MESSAGES = ['Oi!', 'E aí?', 'Me clica!', 'Uhul!', 'Vamo lá!']
 
 const WHISKERS: Array<[[number, number, number], [number, number, number]]> = [
   [[-0.22, 0.28, 1.12], [-0.86, 0.4, 0.9]],

@@ -79,9 +79,14 @@
   color: var(--text-light);
 }
 
-.flipEmoji {
-  font-size: 2rem;
-  line-height: 1;
+.flipIcon {
+  width: 26px;
+  height: 26px;
+  color: var(--lime-flash);
+}
+
+.flipIcon svg {
+  display: block;
 }
 
 .flipTitle {

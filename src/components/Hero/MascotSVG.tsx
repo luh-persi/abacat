@@ -40,7 +40,7 @@ export function MascotSVG() {
   const bubbleRef     = useRef<SVGGElement>(null)
   const bubbleTextRef = useRef<SVGTextElement>(null)
 
-  const MESSAGES = ['Oi! 👋', 'E aí? 😎', 'Me clica!', 'Uhul! 🎉', 'Vamo lá!']
+  const MESSAGES = ['Oi!', 'E aí?', 'Me clica!', 'Uhul!', 'Vamo lá!']
   const msgIdx = useRef(0)
 
   /* ── Idle animations ─────────────────────────── */
@@ -287,7 +287,7 @@ export function MascotSVG() {
           fontWeight="700"
           fill="#1A3008"
         >
-          Oi! 👋
+          Oi!
         </text>
       </g>
     </svg>

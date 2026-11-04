@@ -81,9 +81,7 @@ export function Footer() {
             © {YEAR} Abacat. Todos os direitos reservados.
           </p>
           <p className={styles.madeWith}>
-            Feito com{' '}
-            <span aria-label="amor" style={{ color: 'var(--lime-flash)' }}>♥</span>
-            {' '}pela própria Abacat.
+            Feito pela própria Abacat.
           </p>
         </div>
       </div>
