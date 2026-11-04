@@ -195,9 +195,19 @@
 
 /* Responsive */
 @media (max-width: 700px) {
-  .grid { grid-template-columns: 1fr; }
-  .flipCard, .flipInner { min-height: 220px; }
-  .flipFront, .flipBack { padding: 1.35rem 1.2rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+  .flipCard, .flipInner { min-height: 176px; }
+  .flipFront, .flipBack { padding: 0.95rem 0.8rem; gap: 0.45rem; }
+  .flipTitle { font-size: 0.92rem; }
+  .flipSolution { font-size: 0.75rem; line-height: 1.4; }
+  .flipHint { font-size: 0.62rem; }
   .bridge { flex-direction: column; align-items: flex-start; }
   .bridgeBtn { width: 100%; justify-content: center; white-space: normal; text-align: center; }
 }
