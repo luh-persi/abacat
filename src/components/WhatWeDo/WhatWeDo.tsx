@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import styles from './WhatWeDo.module.css'
 
 const SERVICES = [
@@ -32,7 +31,7 @@ const SERVICES = [
   },
   {
     id: 'ai',
-    tag: '06 / inovação',
+    tag: '03 / inovação',
     title: 'Automação & IA',
     desc: 'Fluxos automatizados e inteligência artificial integrados ao seu negócio para eliminar trabalho manual.',
     color: 'amber',
@@ -64,7 +63,7 @@ const SERVICES = [
   },
   {
     id: 'marketing',
-    tag: '03 / performance',
+    tag: '05 / performance',
     title: 'Marketing & Tráfego Pago',
     desc: 'Campanhas que convertem, redes sociais com estratégia e resultados que aparecem no financeiro.',
     color: 'coral',
@@ -80,7 +79,7 @@ const SERVICES = [
   },
   {
     id: 'strategy',
-    tag: '05 / estratégia',
+    tag: '06 / estratégia',
     title: 'Estratégia Comercial & Processos',
     desc: 'Organizamos seu funil de vendas, mapeamos processos e criamos estruturas que escalam — sem depender de caos.',
     color: 'dark',
@@ -98,21 +97,8 @@ const SERVICES = [
 ]
 
 export function WhatWeDo() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const cards = sectionRef.current?.querySelectorAll('.reveal')
-    if (!cards) return
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.12 }
-    )
-    cards.forEach(c => obs.observe(c))
-    return () => obs.disconnect()
-  }, [])
-
   return (
-    <section id="solucoes" ref={sectionRef} className={styles.section}>
+    <section id="solucoes" className={styles.section}>
       <div className="container">
         <div className={`${styles.header} reveal`}>
           <span className="tag-label" style={{ color: 'var(--text-muted)' }}>// o que fazemos</span>
@@ -136,9 +122,11 @@ export function WhatWeDo() {
               className={`${styles.card} ${styles[`card--${s.color}`]} ${styles[`card--${s.size}`]} reveal reveal-delay-${Math.min(i, 5)}`}
             >
               <div className={styles.cardIcon}>{s.icon}</div>
-              <span className={`${styles.cardTag} tag-label`}>{s.tag}</span>
-              <h3 className={styles.cardTitle}>{s.title}</h3>
-              <p className={styles.cardDesc}>{s.desc}</p>
+              <div className={styles.cardBody}>
+                <span className={`${styles.cardTag} tag-label`}>{s.tag}</span>
+                <h3 className={styles.cardTitle}>{s.title}</h3>
+                <p className={styles.cardDesc}>{s.desc}</p>
+              </div>
               <div className={styles.cardArrow}>
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <path d="M4 9h10M10 5l4 4-4 4"

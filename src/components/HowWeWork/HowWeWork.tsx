@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import styles from './HowWeWork.module.css'
 
 const STEPS = [
@@ -58,21 +57,8 @@ const STEPS = [
 ]
 
 export function HowWeWork() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const items = sectionRef.current?.querySelectorAll('.reveal')
-    if (!items) return
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.1 }
-    )
-    items.forEach(el => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
   return (
-    <section id="como-trabalhamos" ref={sectionRef} className={styles.section}>
+    <section id="como-trabalhamos" className={styles.section}>
       <div className="container">
         <div className={`${styles.header} reveal`}>
           <span className="tag-label" style={{ color: 'var(--text-muted)' }}>// nossa metodologia</span>

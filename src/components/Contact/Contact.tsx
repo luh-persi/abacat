@@ -41,18 +41,6 @@ export function Contact() {
     return () => obs.disconnect()
   }, [])
 
-  // Reveal items
-  useEffect(() => {
-    const items = sectionRef.current?.querySelectorAll('.reveal')
-    if (!items) return
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.12 }
-    )
-    items.forEach(el => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
   return (
     <section id="contato" ref={sectionRef} className={styles.section}>
       {/* Texture overlay */}

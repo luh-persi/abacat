@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { Runner, type GameBridge, type Hud } from './Runner'
 import styles from './Game.module.css'
 
@@ -156,21 +156,8 @@ export function Game() {
 }
 
 export function GameSection() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const items = sectionRef.current?.querySelectorAll('.reveal')
-    if (!items) return
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.1 }
-    )
-    items.forEach(el => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
   return (
-    <section ref={sectionRef} className={styles.section}>
+    <section className={styles.section}>
       <div className="container">
         <div className={`${styles.header} reveal`}>
           <span className="tag-label" style={{ color: 'rgba(200,216,50,0.6)' }}>// bonus level</span>

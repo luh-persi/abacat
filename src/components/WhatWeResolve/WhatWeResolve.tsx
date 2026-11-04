@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
 import styles from './WhatWeResolve.module.css'
 
 const ICONS = {
@@ -64,21 +64,10 @@ const PROBLEMS = [
 ] as const
 
 export function WhatWeResolve() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const items = sectionRef.current?.querySelectorAll('.reveal')
-    if (!items) return
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.1 }
-    )
-    items.forEach(el => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
+  const [open, setOpen] = useState<string | null>(null)
 
   return (
-    <section id="problemas" ref={sectionRef} className={styles.section}>
+    <section id="problemas" className={styles.section}>
       <div className="container">
         <div className={`${styles.header} reveal`}>
           <span className="tag-label" style={{ color: 'var(--text-muted)' }}>// problemas que resolvemos</span>
@@ -94,10 +83,12 @@ export function WhatWeResolve() {
           {PROBLEMS.map((item, i) => (
             <div
               key={item.id}
-              className={`${styles.flipCard} ${styles[`flip--${item.color}`]} reveal reveal-delay-${Math.min(i % 4, 4)}`}
+              className={`${styles.flipCard} ${styles[`flip--${item.color}`]} ${open === item.id ? styles.isOpen : ''} reveal reveal-delay-${Math.min(i % 4, 4)}`}
               role="button"
               tabIndex={0}
+              aria-pressed={open === item.id}
               aria-label={`${item.problem} — clique para ver a solução`}
+              onClick={() => setOpen((current) => (current === item.id ? null : item.id))}
             >
               <div className={styles.flipInner}>
                 {/* Front: Problem */}

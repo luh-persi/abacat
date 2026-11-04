@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navbar } from './components/Navbar/Navbar'
 import { Hero } from './components/Hero/Hero'
 import { WhatWeDo } from './components/WhatWeDo/WhatWeDo'
@@ -8,6 +9,33 @@ import { Contact } from './components/Contact/Contact'
 import { Footer } from './components/Footer/Footer'
 
 function App() {
+  useEffect(() => {
+    const reveal = document.querySelectorAll('.reveal')
+    const sections = document.querySelectorAll('main > section')
+    const onReveal = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('visible', entry.isIntersecting)
+        })
+      },
+      { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
+    )
+    const onSection = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('section-in', entry.isIntersecting)
+        })
+      },
+      { threshold: 0.12 },
+    )
+    reveal.forEach((el) => onReveal.observe(el))
+    sections.forEach((el) => onSection.observe(el))
+    return () => {
+      onReveal.disconnect()
+      onSection.disconnect()
+    }
+  }, [])
+
   return (
     <>
       <Navbar />

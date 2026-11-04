@@ -53,8 +53,14 @@
   border-radius: var(--radius-lg);
 }
 
-.flipCard:hover .flipInner {
+.flipCard.isOpen .flipInner {
   transform: rotateY(180deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .flipCard:hover .flipInner {
+    transform: rotateY(180deg);
+  }
 }
 
 /* ── Front & Back Shared ── */
@@ -189,11 +195,9 @@
 
 /* Responsive */
 @media (max-width: 700px) {
-  .grid { grid-template-columns: 1fr 1fr; }
-  .bridge { flex-direction: column; align-items: flex-start; }
-  .bridgeBtn { width: 100%; justify-content: center; }
-}
-
-@media (max-width: 480px) {
   .grid { grid-template-columns: 1fr; }
+  .flipCard, .flipInner { min-height: 220px; }
+  .flipFront, .flipBack { padding: 1.35rem 1.2rem; }
+  .bridge { flex-direction: column; align-items: flex-start; }
+  .bridgeBtn { width: 100%; justify-content: center; white-space: normal; text-align: center; }
 }
