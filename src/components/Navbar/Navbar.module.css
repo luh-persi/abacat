@@ -69,6 +69,10 @@
   color: var(--text-light);
   background: rgba(255, 255, 255, 0.06);
 }
+.navLinkActive {
+  color: var(--text-light);
+  background: rgba(200, 216, 50, 0.14);
+}
 
 /* CTA Button */
 .ctaBtn {

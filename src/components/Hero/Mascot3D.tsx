@@ -49,9 +49,13 @@ const FOOT_BONES = ['Pezinho_E', 'Pezinho_D'] as const
 export function AvocadoCat({
   jumpRef,
   shadow = true,
+  face = 'front',
+  strideRef,
 }: {
   jumpRef?: RefObject<() => void>
   shadow?: boolean
+  face?: 'front' | 'back'
+  strideRef?: RefObject<number>
 }) {
   const gltf = useGLTF(mascoteUrl)
   const rig = useMemo(() => {
@@ -150,30 +154,38 @@ export function AvocadoCat({
         1,
       )
     }
-    if (root.current) {
+    if (root.current && face === 'front') {
       const lookX = (state.pointer.x || 0) * 0.22
       const lookY = (state.pointer.y || 0) * 0.08
       root.current.rotation.y = THREE.MathUtils.lerp(root.current.rotation.y, lookX, 0.08)
       root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, -lookY, 0.08)
+    } else if (root.current) {
+      root.current.rotation.y = THREE.MathUtils.lerp(root.current.rotation.y, 0, 0.12)
+      root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, 0, 0.12)
     }
 
+    const stride = strideRef?.current
+    const running = stride !== undefined
+    const phase = running ? stride * 2.7 : t * 3.2
+    const earAmp = running ? 0.16 : 0.08
+    const footAmp = (running ? 0.42 : 0.1) * (1 - air)
     const earL = bones.get('Orelha_E')
     const earR = bones.get('Orelha_D')
     const restL = rest.get('Orelha_E')
     const restR = rest.get('Orelha_D')
     if (earL && restL) {
-      earOffset.setFromAxisAngle(axisZ, Math.sin(t * 2.4) * 0.08)
+      earOffset.setFromAxisAngle(axisZ, Math.sin(phase) * earAmp)
       earL.quaternion.copy(restL).multiply(earOffset)
     }
     if (earR && restR) {
-      earOffset.setFromAxisAngle(axisZ, Math.sin(t * 2.4 + 0.6) * -0.08)
+      earOffset.setFromAxisAngle(axisZ, Math.sin(phase + 0.6) * -earAmp)
       earR.quaternion.copy(restR).multiply(earOffset)
     }
     FOOT_BONES.forEach((name, index) => {
       const bone = bones.get(name)
       const pose = rest.get(name)
       if (!bone || !pose) return
-      footOffset.setFromAxisAngle(axisX, Math.sin(t * 3.2 + index * Math.PI) * 0.1 * (1 - air))
+      footOffset.setFromAxisAngle(axisX, Math.sin(phase + index * Math.PI) * footAmp)
       bone.quaternion.copy(pose).multiply(footOffset)
     })
   })
@@ -188,7 +200,7 @@ export function AvocadoCat({
       )}
       <group ref={root}>
         <group ref={body}>
-          <group ref={rigRoot} rotation={[0, -Math.PI / 2, 0]} scale={2.25}>
+          <group ref={rigRoot} rotation={[0, face === 'back' ? Math.PI / 2 : -Math.PI / 2, 0]} scale={2.25}>
             <primitive object={rig} />
           </group>
         </group>

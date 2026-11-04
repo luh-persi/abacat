@@ -35,7 +35,6 @@ type Item = {
   lane: number
   at: number
   live: boolean
-  color: number
   prevZ: number
   judged: boolean
 }
@@ -43,18 +42,14 @@ type Item = {
 const LANES = [-2.15, 0, 2.15] as const
 const POOL = 40
 const BUILDINGS = 14
-const COLORS = ['#7C3AED', '#DC2626', '#EA580C', '#0891B2', '#DB2777', '#059669', '#C2410C', '#2563EB', '#9333EA', '#CA8A04']
-const PALETTE = COLORS.map((hex) => new THREE.Color(hex))
+const WINDOWS = BUILDINGS * 2
 const COIN = new THREE.Color('#C8D832')
 const SHIELD_COLOR = new THREE.Color('#F6C56B')
-const LOW = new THREE.Color('#F4907A')
-const HIGH = new THREE.Color('#6D28D9')
-const SWEEP = new THREE.Color('#991B1B')
-const BUILDING_COLORS = ['#0c1c09', '#132816', '#0a1608', '#18301a', '#101f0e'].map((hex) => new THREE.Color(hex))
+const BUILDING_COLORS = ['#101e0c', '#17301a', '#0d1a0b', '#1c3820', '#142616'].map((hex) => new THREE.Color(hex))
 const HIT_Z = 0.2
 
 function emptyItem(): Item {
-  return { kind: 'block', lane: 1, at: 0, live: false, color: 0, prevZ: -99, judged: false }
+  return { kind: 'block', lane: 1, at: 0, live: false, prevZ: -99, judged: false }
 }
 
 function coins(lane: number, start: number): Part[] {
@@ -121,7 +116,6 @@ function claim(items: Item[], part: Part, at: number) {
   slot.lane = part.lane
   slot.at = at + part.da
   slot.live = true
-  slot.color = Math.floor(Math.random() * PALETTE.length)
   slot.prevZ = -99
   slot.judged = false
 }
@@ -135,20 +129,31 @@ function paintBox(mesh: THREE.Mesh, color: THREE.Color) {
 function useFloorMap() {
   return useMemo(() => {
     const canvas = document.createElement('canvas')
-    canvas.width = 128
-    canvas.height = 128
+    const width = 280
+    const height = 256
+    canvas.width = width
+    canvas.height = height
     const ctx = canvas.getContext('2d')
     if (!ctx) return new THREE.Texture()
-    ctx.fillStyle = '#071407'
-    ctx.fillRect(0, 0, 128, 128)
-    ctx.strokeStyle = 'rgba(200, 216, 50, 0.45)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(1, 1, 126, 126)
+    ctx.fillStyle = '#071208'
+    ctx.fillRect(0, 0, width, height)
+    ctx.fillStyle = '#0d1c0b'
+    for (const lane of [-2.15, 0, 2.15]) {
+      ctx.fillRect((lane + 7) * 20 - 24, 0, 48, height)
+    }
+    ctx.fillStyle = 'rgba(200, 216, 50, 0.72)'
+    for (const divider of [-1.08, 1.08]) {
+      const x = (divider + 7) * 20 - 1.5
+      for (let y = 10; y < height; y += 52) ctx.fillRect(x, y, 3, 24)
+    }
+    ctx.fillStyle = '#C8D832'
+    for (const rail of [-3.7, 3.7]) ctx.fillRect((rail + 7) * 20 - 1, 0, 2, height)
     const tex = new THREE.CanvasTexture(canvas)
-    tex.wrapS = THREE.RepeatWrapping
+    tex.wrapS = THREE.ClampToEdgeWrapping
     tex.wrapT = THREE.RepeatWrapping
-    tex.repeat.set(8, 28)
+    tex.repeat.set(1, 8)
     tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = 8
     return tex
   }, [])
 }
@@ -158,7 +163,9 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
   const pool = useRef<Item[]>(Array.from({ length: POOL }, emptyItem))
   const slots = useRef<(THREE.Group | null)[]>([])
   const buildings = useRef<THREE.InstancedMesh>(null)
+  const windows = useRef<THREE.InstancedMesh>(null)
   const painted = useRef(false)
+  const stride = useRef(0)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const player = useRef<THREE.Group>(null)
   const body = useRef<THREE.Group>(null)
@@ -323,8 +330,9 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
 
     const goal = LANES[lane.current]
     const prevX = x.current
-    x.current += (goal - x.current) * Math.min(1, step * 14)
-    floor.offset.y = -travel.current * 0.085
+    x.current += (goal - x.current) * Math.min(1, step * 11)
+    floor.offset.y = -travel.current * (8 / 56)
+    stride.current = travel.current
 
     const items = pool.current
     const sweepX = Math.sin(state.clock.elapsedTime * 1.25) * 2.15
@@ -393,48 +401,59 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
 
       const wide = item.lane === 3
       const ix = item.kind === 'sweep' ? sweepX : wide ? 0 : LANES[item.lane]
-      const bob = item.kind === 'coin' || item.kind === 'shield' ? Math.sin(state.clock.elapsedTime * 4 + item.at) * 0.1 : 0
-      group.visible = true
-      group.position.set(ix, bob, z)
-      group.rotation.y = item.kind === 'coin' || item.kind === 'shield' ? state.clock.elapsedTime * 2.4 : 0
+      const time = state.clock.elapsedTime
+      const block = group.children[0] as THREE.Group
+      const low = group.children[1] as THREE.Group
+      const high = group.children[2] as THREE.Group
+      const saw = group.children[3] as THREE.Group
+      const pickup = group.children[4] as THREE.Group
+      block.visible = item.kind === 'block'
+      low.visible = item.kind === 'low'
+      high.visible = item.kind === 'high'
+      saw.visible = item.kind === 'sweep'
+      pickup.visible = item.kind === 'coin' || item.kind === 'shield'
 
-      const box = group.children[0] as THREE.Mesh
-      const postL = group.children[1] as THREE.Mesh
-      const postR = group.children[2] as THREE.Mesh
-      const gem = group.children[3] as THREE.Mesh
-      const ring = group.children[4] as THREE.Mesh
-      const isBox = item.kind === 'block' || item.kind === 'low' || item.kind === 'high' || item.kind === 'sweep'
-      box.visible = isBox
-      postL.visible = item.kind === 'high' && !wide
-      postR.visible = postL.visible
-      gem.visible = item.kind === 'coin' || item.kind === 'shield'
-      ring.visible = item.kind === 'shield'
-
-      if (item.kind === 'low') {
-        box.scale.set(wide ? 8.2 : 1.7, 0.48, 0.7)
-        box.position.y = 0.28
-        paintBox(box, LOW)
-      } else if (item.kind === 'high') {
-        box.scale.set(wide ? 8.2 : 1.55, 0.38, 0.48)
-        box.position.y = 1.32
-        paintBox(box, HIGH)
+      let y = 0
+      let rotX = 0
+      let rotY = 0
+      let rotZ = 0
+      if (item.kind === 'block') {
+        y = Math.sin(time * 2.1 + item.at) * 0.045
+        rotY = Math.sin(time * 0.8 + item.at) * 0.28
+      } else if (item.kind === 'low') {
+        y = Math.sin(time * 2.6 + item.at) * 0.02
       } else if (item.kind === 'sweep') {
-        box.scale.set(1.35, 1.05, 1.05)
-        box.position.y = 0.58
-        paintBox(box, SWEEP)
-      } else if (item.kind === 'block') {
-        box.scale.set(1.2, 1.2, 1.2)
-        box.position.y = 0.64
-        paintBox(box, PALETTE[item.color])
-      }
-      if (gem.visible) {
+        y = 0.58
+        rotX = time * 1.6
+        rotY = time * 2.3 + item.at
+      } else if (item.kind === 'coin' || item.kind === 'shield') {
+        y = 0.78 + Math.sin(time * 4 + item.at) * 0.08
+        rotY = time * 2.2
+        const gem = pickup.children[0] as THREE.Mesh
+        const ring = pickup.children[1] as THREE.Mesh
         paintBox(gem, item.kind === 'shield' ? SHIELD_COLOR : COIN)
-        gem.position.y = 0.74
-        gem.scale.setScalar(item.kind === 'shield' ? 1.45 : 1)
+        gem.scale.setScalar(item.kind === 'shield' ? 1.25 : 1)
+        ring.visible = item.kind === 'shield'
       }
+      if (item.kind === 'low' || item.kind === 'high') {
+        const gate = item.kind === 'low' ? low : high
+        const bar = gate.children[2] as THREE.Mesh
+        const postL = gate.children[0] as THREE.Mesh
+        const postR = gate.children[1] as THREE.Mesh
+        bar.scale.y = wide ? 3.7 : 1
+        const postX = wide ? 2.85 : item.kind === 'low' ? 0.68 : 0.74
+        postL.position.x = -postX
+        postR.position.x = postX
+      }
+
+      group.visible = true
+      group.position.set(ix, y, z)
+      group.rotation.set(rotX, rotY, rotZ)
+      const arrive = THREE.MathUtils.smoothstep(z, -22, -12)
+      group.scale.setScalar(0.86 + arrive * 0.14)
     }
 
-    while (seenRun.current > 0 && plan.current.at < travel.current + 48) {
+    while ((preview || seenRun.current > 0) && plan.current.at < travel.current + 46) {
       const next = patternFor(plan.current.at, plan.current.n)
       for (const part of next.parts) claim(items, part, plan.current.at)
       plan.current.n += 1
@@ -477,6 +496,24 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
       }
       city.instanceMatrix.needsUpdate = true
     }
+    const win = windows.current
+    if (win) {
+      for (let i = 0; i < WINDOWS; i++) {
+        const b = i % BUILDINGS
+        const level = Math.floor(i / BUILDINGS)
+        const side = b % 2 === 0 ? -1 : 1
+        const span = 70
+        const z = (((b * 10 + travel.current) % span) + span) % span - 46
+        const height = 1.5 + (b % 5) * 0.7
+        const lit = (b + level) % 4 !== 0
+        dummy.position.set(side * 4.82, 0.42 + level * height * 0.36, z)
+        dummy.scale.set(lit ? 0.05 : 0, lit ? 0.16 : 0, lit ? 0.26 : 0)
+        dummy.rotation.set(0, 0, 0)
+        dummy.updateMatrix()
+        win.setMatrixAt(i, dummy.matrix)
+      }
+      win.instanceMatrix.needsUpdate = true
+    }
 
     const fast = Math.max(0, speed.current - 8)
     for (let i = 0; i < streaks.current.length; i++) {
@@ -493,15 +530,15 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
     }
 
     const duck = slide.current > 0
-    const bob = playerY.current < 0.02 && !duck ? Math.sin(travel.current * 2.5) * 0.04 : 0
+    const bob = playerY.current < 0.02 && !duck ? Math.sin(travel.current * 8) * 0.035 : 0
     if (player.current) {
-      player.current.position.set(x.current, 0.64 + playerY.current * 0.92 + bob - (duck ? 0.2 : 0), 0.2)
+      player.current.position.set(x.current, 0.64 + playerY.current * 0.92 + bob - (duck ? 0.16 : 0), 0.2)
     }
     if (body.current) {
       const vx = (x.current - prevX) / step
-      body.current.scale.y += ((duck ? 0.6 : 1) - body.current.scale.y) * Math.min(1, step * 12)
-      body.current.rotation.x += ((duck ? 0.9 : 0.12) - body.current.rotation.x) * Math.min(1, step * 10)
-      body.current.rotation.z += (-vx * 0.05 - body.current.rotation.z) * Math.min(1, step * 8)
+      body.current.scale.y += ((duck ? 0.62 : 1) - body.current.scale.y) * Math.min(1, step * 12)
+      body.current.rotation.x += ((duck ? -0.5 : -0.34) - body.current.rotation.x) * Math.min(1, step * 10)
+      body.current.rotation.z += (-vx * 0.045 - body.current.rotation.z) * Math.min(1, step * 8)
       body.current.visible = invuln.current <= 0 || Math.sin(state.clock.elapsedTime * 42) > 0
     }
     if (aura.current) {
@@ -521,45 +558,51 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
     const sx = Math.sin(time * 72) * shake.current
     const sy = Math.cos(time * 61) * shake.current
     const aim = x.current
-    state.camera.position.set(aim * 0.4 + sx, 2.4 + playerY.current * 0.18 - (duck ? 0.28 : 0) + sy, 5.55)
-    state.camera.lookAt(aim * 0.55, 0.55 + playerY.current * 0.1, -8)
+    const phone = state.size.width < 560
+    const cam = state.camera as THREE.PerspectiveCamera
+    const fov = phone ? 48 : 40
+    if (cam.fov !== fov) {
+      cam.fov = fov
+      cam.updateProjectionMatrix()
+    }
+    state.camera.position.set(
+      aim * (phone ? 0.28 : 0.4) + sx,
+      (phone ? 3.15 : 2.4) + playerY.current * 0.16 - (duck ? 0.22 : 0) + sy,
+      phone ? 6.85 : 5.55,
+    )
+    state.camera.lookAt(aim * 0.4, phone ? 0.42 : 0.55 + playerY.current * 0.1, phone ? -5.5 : -8)
   })
 
   return (
     <>
       <color attach="background" args={['#060e04']} />
-      <fog attach="fog" args={['#060e04', 18, 48]} />
-      <ambientLight intensity={0.7} />
-      <hemisphereLight args={['#f2f6d4', '#071407', 0.45]} />
-      <directionalLight position={[4, 6, 6]} intensity={2.2} color="#fff8ee" />
-      <directionalLight position={[-3, 2, -4]} intensity={0.45} color="#c8d832" />
+      <fog attach="fog" args={['#071208', 12, 38]} />
+      <ambientLight intensity={0.55} />
+      <hemisphereLight args={['#e7f0b8', '#071407', 0.55]} />
+      <directionalLight position={[2.4, 6.5, 5]} intensity={2.4} color="#fff6e8" />
+      <directionalLight position={[0, 3.2, -10]} intensity={1.15} color="#d5e86a" />
+      <pointLight position={[0, 1.6, 2.2]} intensity={2.2} distance={8} color="#fff4d4" />
 
+      <mesh position={[0, 7.5, -34]}>
+        <planeGeometry args={[80, 22]} />
+        <meshBasicMaterial color="#10240e" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -8]}>
+        <planeGeometry args={[36, 64]} />
+        <meshStandardMaterial color="#050c04" roughness={1} />
+      </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -8]}>
         <planeGeometry args={[14, 56]} />
-        <meshStandardMaterial map={floor} roughness={0.92} />
+        <meshStandardMaterial map={floor} roughness={0.84} metalness={0.04} />
       </mesh>
-      {LANES.map((laneX) => (
-        <mesh key={laneX} rotation={[-Math.PI / 2, 0, 0]} position={[laneX, 0.02, -10]}>
-          <planeGeometry args={[1.2, 52]} />
-          <meshBasicMaterial color="#0c1c0a" transparent opacity={0.42} />
-        </mesh>
-      ))}
-      {[-1.08, 1.08].map((divider) => (
-        <mesh key={divider} position={[divider, 0.045, -10]}>
-          <boxGeometry args={[0.04, 0.03, 52]} />
-          <meshStandardMaterial color="#c8d832" emissive="#c8d832" emissiveIntensity={0.7} transparent opacity={0.45} />
-        </mesh>
-      ))}
-      {[-3.7, 3.7].map((rail) => (
-        <mesh key={rail} position={[rail, 0.06, -10]}>
-          <boxGeometry args={[0.05, 0.045, 52]} />
-          <meshStandardMaterial color="#c8d832" emissive="#c8d832" emissiveIntensity={1.4} />
-        </mesh>
-      ))}
 
       <instancedMesh ref={buildings} args={[undefined, undefined, BUILDINGS]}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial roughness={0.94} />
+        <meshStandardMaterial roughness={0.88} metalness={0.04} />
+      </instancedMesh>
+      <instancedMesh ref={windows} args={[undefined, undefined, WINDOWS]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#e7f4a4" emissive="#C8D832" emissiveIntensity={0.9} />
       </instancedMesh>
 
       {Array.from({ length: 8 }, (_, i) => (
@@ -575,26 +618,68 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
 
       {Array.from({ length: POOL }, (_, i) => (
         <group key={i} ref={(node) => { slots.current[i] = node }} visible={false}>
-          <mesh>
-            <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial emissiveIntensity={0.9} roughness={0.38} />
-          </mesh>
-          <mesh position={[-0.5, 0.62, 0]}>
-            <boxGeometry args={[0.12, 1.15, 0.12]} />
-            <meshStandardMaterial color="#14081f" roughness={0.7} />
-          </mesh>
-          <mesh position={[0.5, 0.62, 0]}>
-            <boxGeometry args={[0.12, 1.15, 0.12]} />
-            <meshStandardMaterial color="#14081f" roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 0.74, 0]}>
-            <octahedronGeometry args={[0.32, 0]} />
-            <meshStandardMaterial emissive="#C8D832" emissiveIntensity={1.7} roughness={0.28} />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.74, 0]}>
-            <torusGeometry args={[0.36, 0.045, 8, 18]} />
-            <meshStandardMaterial color="#F6C56B" emissive="#F6C56B" emissiveIntensity={1.5} />
-          </mesh>
+          <group>
+            <mesh position={[0, 0.58, 0]}>
+              <boxGeometry args={[1.02, 1.02, 1.02]} />
+              <meshStandardMaterial color="#162812" roughness={0.46} metalness={0.12} />
+            </mesh>
+            <mesh position={[0, 0.58, 0.52]}>
+              <boxGeometry args={[1.06, 0.1, 0.04]} />
+              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={0.85} />
+            </mesh>
+            <mesh position={[0, 1.1, 0]}>
+              <boxGeometry args={[1.06, 0.06, 1.06]} />
+              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={0.4} />
+            </mesh>
+          </group>
+          <group>
+            <mesh position={[-0.68, 0.28, 0]}>
+              <cylinderGeometry args={[0.055, 0.08, 0.56, 8]} />
+              <meshStandardMaterial color="#3a1814" roughness={0.55} />
+            </mesh>
+            <mesh position={[0.68, 0.28, 0]}>
+              <cylinderGeometry args={[0.055, 0.08, 0.56, 8]} />
+              <meshStandardMaterial color="#3a1814" roughness={0.55} />
+            </mesh>
+            <mesh position={[0, 0.48, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.065, 0.065, 1.5, 12]} />
+              <meshStandardMaterial color="#F4907A" emissive="#F4907A" emissiveIntensity={0.28} />
+            </mesh>
+          </group>
+          <group>
+            <mesh position={[-0.74, 0.72, 0]}>
+              <cylinderGeometry args={[0.05, 0.07, 1.44, 8]} />
+              <meshStandardMaterial color="#241838" roughness={0.5} />
+            </mesh>
+            <mesh position={[0.74, 0.72, 0]}>
+              <cylinderGeometry args={[0.05, 0.07, 1.44, 8]} />
+              <meshStandardMaterial color="#241838" roughness={0.5} />
+            </mesh>
+            <mesh position={[0, 1.32, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.075, 0.075, 1.62, 12]} />
+              <meshStandardMaterial color="#d7ef6a" emissive="#C8D832" emissiveIntensity={0.4} />
+            </mesh>
+          </group>
+          <group>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.46, 0.07, 10, 22]} />
+              <meshStandardMaterial color="#F4907A" emissive="#F4907A" emissiveIntensity={1.15} />
+            </mesh>
+            <mesh>
+              <octahedronGeometry args={[0.2, 0]} />
+              <meshStandardMaterial color="#fff1c4" emissive="#F6C56B" emissiveIntensity={1.5} />
+            </mesh>
+          </group>
+          <group>
+            <mesh>
+              <octahedronGeometry args={[0.26, 0]} />
+              <meshStandardMaterial color="#C8D832" emissive="#C8D832" emissiveIntensity={1.7} roughness={0.22} />
+            </mesh>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.4, 0.035, 8, 20]} />
+              <meshStandardMaterial color="#F6C56B" emissive="#F6C56B" emissiveIntensity={1.3} />
+            </mesh>
+          </group>
         </group>
       ))}
 
@@ -607,7 +692,7 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
         <group ref={body}>
           <Suspense fallback={null}>
             <group scale={0.5}>
-              <AvocadoCat jumpRef={bridge.current.jumpRef} shadow={false} />
+              <AvocadoCat jumpRef={bridge.current.jumpRef} shadow={false} face="back" strideRef={stride} />
             </group>
           </Suspense>
         </group>
@@ -620,7 +705,7 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
       {glow && (
         <Suspense fallback={null}>
           <EffectComposer enableNormalPass={false}>
-            <Bloom intensity={0.38} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
+            <Bloom intensity={0.28} luminanceThreshold={0.78} luminanceSmoothing={0.28} mipmapBlur />
             <Vignette eskil={false} offset={0.28} darkness={0.7} />
           </EffectComposer>
         </Suspense>

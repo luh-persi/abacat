@@ -10,12 +10,30 @@ const NAV_LINKS = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [active, setActive] = useState('')
   const navRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const nodes = NAV_LINKS
+      .map((link) => document.querySelector(link.href))
+      .filter((node): node is Element => node instanceof Element)
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const hit = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+        if (hit) setActive(`#${hit.target.id}`)
+      },
+      { threshold: [0.25, 0.45], rootMargin: '-18% 0px -42% 0px' },
+    )
+    nodes.forEach((node) => obs.observe(node))
+    return () => obs.disconnect()
   }, [])
 
   const handleNavClick = (href: string) => {
@@ -50,7 +68,7 @@ export function Navbar() {
           {NAV_LINKS.map(link => (
             <button
               key={link.href}
-              className={styles.navLink}
+              className={`${styles.navLink} ${active === link.href ? styles.navLinkActive : ''}`}
               onClick={() => handleNavClick(link.href)}
             >
               {link.label}
@@ -86,7 +104,7 @@ export function Navbar() {
         {NAV_LINKS.map(link => (
           <button
             key={link.href}
-            className={styles.mobileNavLink}
+            className={`${styles.mobileNavLink} ${active === link.href ? styles.navLinkActive : ''}`}
             onClick={() => handleNavClick(link.href)}
           >
             {link.label}

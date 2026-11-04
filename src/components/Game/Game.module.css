@@ -81,6 +81,16 @@
   display: block;
 }
 
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.5);
+}
+
 .hud {
   position: absolute;
   z-index: 2;
@@ -272,16 +282,51 @@
 
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 680px) {
+  .section {
+    padding: 4.5rem 0 4rem;
+  }
+
   .stage {
+    aspect-ratio: 3 / 4;
     border-radius: 12px;
+  }
+
+  .banner {
+    top: 14px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .banner strong {
+    font-size: 1.45rem;
+  }
+
+  .banner p {
+    font-size: 0.82rem;
+  }
+
+  .hint {
+    font-size: 0.7rem !important;
+    line-height: 1.45;
   }
 
   .overlayBtn {
     font-size: 0.9rem;
-    padding: 12px 24px;
+    padding: 12px 22px;
   }
 
   .heading {
-    font-size: 1.75rem;
+    font-size: 1.7rem;
+  }
+
+  .sub {
+    font-size: 0.95rem;
+  }
+
+  .note {
+    flex-direction: column;
+    margin-top: 5rem;
+    padding: 0 0.75rem;
+    line-height: 1.65;
   }
 }

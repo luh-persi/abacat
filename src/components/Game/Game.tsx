@@ -129,7 +129,7 @@ export function Game() {
                 ? 'Pula o que vem baixo, abaixa no que vem alto e junta os pontos.'
                 : `Você fez ${hud.score} pontos em ${hud.meters} m`}
             </p>
-            {phase === 'idle' && <p className={styles.hint}>Mouse ou ← → · ↑ clique pula · ↓ abaixa</p>}
+            {phase === 'idle' && <p className={styles.hint}>Arraste ou ← → · toque ou ↑ pula · ↓ abaixa</p>}
             {phase === 'gameover' && <p className={styles.hint}>{pitch}</p>}
           </div>
         )}
