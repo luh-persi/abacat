@@ -605,9 +605,11 @@ export function Runner({ bridge }: { bridge: MutableRefObject<GameBridge> }) {
 
       <group ref={player} position={[0, 0.64, 0.2]}>
         <group ref={body}>
-          <group scale={0.5}>
-            <AvocadoCat jumpRef={bridge.current.jumpRef} />
-          </group>
+          <Suspense fallback={null}>
+            <group scale={0.5}>
+              <AvocadoCat jumpRef={bridge.current.jumpRef} shadow={false} />
+            </group>
+          </Suspense>
         </group>
         <mesh ref={aura} visible={false} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.7, 0]}>
           <torusGeometry args={[0.64, 0.04, 8, 28]} />

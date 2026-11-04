@@ -1,297 +1,203 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { RoundedBox } from '@react-three/drei'
+import { useAnimations, useGLTF } from '@react-three/drei'
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import * as THREE from 'three'
-import gsap from 'gsap'
+import mascoteUrl from '../../assets/mascote-rig.glb'
 import styles from './Mascot3D.module.css'
 
 const MESSAGES = ['Oi!', 'E aí?', 'Me clica!', 'Uhul!', 'Vamo lá!']
 
-const WHISKERS: Array<[[number, number, number], [number, number, number]]> = [
-  [[-0.22, 0.28, 1.12], [-0.86, 0.4, 0.9]],
-  [[-0.22, 0.16, 1.14], [-0.9, 0.16, 0.92]],
-  [[-0.22, 0.06, 1.12], [-0.84, 0.02, 0.9]],
-  [[0.22, 0.28, 1.12], [0.86, 0.4, 0.9]],
-  [[0.22, 0.16, 1.14], [0.9, 0.16, 0.92]],
-  [[0.22, 0.06, 1.12], [0.84, 0.02, 0.9]],
-]
-
-function spawnConfetti(originX: number, originY: number) {
-  const colors = ['#C8D832', '#F4907A', '#A06030', '#1E4011', '#fff', '#EEECD8']
-  for (let i = 0; i < 28; i++) {
-    const dot = document.createElement('div')
-    const size = 6 + Math.random() * 8
-    const isRect = Math.random() > 0.4
-    dot.style.cssText = `
-      position:fixed;width:${size}px;height:${isRect ? size * 0.5 : size}px;
-      background:${colors[Math.floor(Math.random() * colors.length)]};
-      border-radius:${isRect ? '2px' : '50%'};
-      top:${originY}px;left:${originX}px;
-      pointer-events:none;z-index:9999;
-    `
-    document.body.appendChild(dot)
-    gsap.to(dot, {
-      x: (Math.random() - 0.5) * 300,
-      y: Math.random() * -280 - 40,
-      opacity: 0,
-      rotation: Math.random() * 720 - 360,
-      scale: Math.random() * 0.5 + 0.5,
-      duration: 0.9 + Math.random() * 0.6,
-      ease: 'power2.out',
-      onComplete: () => dot.remove(),
-    })
-  }
-}
-
 function useShadowMap() {
-  const tex = useMemo(() => {
+  return useMemo(() => {
     const c = document.createElement('canvas')
-    c.width = 128
-    c.height = 128
+    c.width = c.height = 128
     const g = c.getContext('2d')!
-    const grd = g.createRadialGradient(64, 64, 8, 64, 64, 62)
-    grd.addColorStop(0, 'rgba(0,0,0,0.42)')
+    const grd = g.createRadialGradient(64, 64, 8, 64, 64, 64)
+    grd.addColorStop(0, 'rgba(0,0,0,0.55)')
     grd.addColorStop(1, 'rgba(0,0,0,0)')
     g.fillStyle = grd
     g.fillRect(0, 0, 128, 128)
-    const map = new THREE.CanvasTexture(c)
-    map.colorSpace = THREE.SRGBColorSpace
-    return map
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
   }, [])
-
-  useEffect(() => () => tex.dispose(), [tex])
-  return tex
 }
 
-function Whisker({ a, b }: { a: [number, number, number]; b: [number, number, number] }) {
-  const pose = useMemo(() => {
-    const start = new THREE.Vector3(...a)
-    const end = new THREE.Vector3(...b)
-    const mid = start.clone().add(end).multiplyScalar(0.5)
-    const len = start.distanceTo(end)
-    const dir = end.clone().sub(start).normalize()
-    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
-    return { mid, len, quat }
-  }, [a, b])
-
-  return (
-    <mesh position={pose.mid} quaternion={pose.quat}>
-      <cylinderGeometry args={[0.016, 0.01, pose.len, 6]} />
-      <meshStandardMaterial color="#16320e" roughness={0.45} />
-    </mesh>
-  )
+function spawnConfetti(x: number, y: number) {
+  const colors = ['#C8D832', '#F4A090', '#A06030', '#EFE7C4', '#7FA832']
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('span')
+    el.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:7px;height:7px;border-radius:2px;background:${colors[i % colors.length]};pointer-events:none;z-index:80;`
+    document.body.appendChild(el)
+    const angle = Math.random() * Math.PI * 2
+    const dist = 40 + Math.random() * 90
+    const rot = Math.random() * 360
+    el.animate(
+      [
+        { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist - 30}px) rotate(${rot}deg)`, opacity: 0 },
+      ],
+      { duration: 700 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)' },
+    ).finished.then(() => el.remove())
+  }
 }
+
+const EAR_BONES = ['Orelha_E', 'Orelha_D'] as const
+const FOOT_BONES = ['Pezinho_E', 'Pezinho_D'] as const
 
 export function AvocadoCat({
   jumpRef,
+  shadow = true,
 }: {
-  jumpRef: { current: () => void }
+  jumpRef?: RefObject<() => void>
+  shadow?: boolean
 }) {
+  const gltf = useGLTF(mascoteUrl)
+  const rig = useMemo(() => {
+    const cloned = cloneSkinned(gltf.scene)
+    const a = new THREE.Vector3()
+    const b = new THREE.Vector3()
+    const c = new THREE.Vector3()
+    cloned.traverse((obj) => {
+      obj.frustumCulled = false
+      const mesh = obj as THREE.Mesh
+      const index = mesh.isMesh ? mesh.geometry?.index : null
+      if (!mesh.isMesh || !index) return
+      const geom = mesh.geometry
+      const pos = geom.attributes.position
+      const keep: number[] = []
+      for (let i = 0; i < index.count; i += 3) {
+        const ia = index.getX(i)
+        const ib = index.getX(i + 1)
+        const ic = index.getX(i + 2)
+        a.fromBufferAttribute(pos, ia)
+        b.fromBufferAttribute(pos, ib)
+        c.fromBufferAttribute(pos, ic)
+        const groundCard = a.y < -0.4 && b.y < -0.4 && c.y < -0.4
+        if (!groundCard) keep.push(ia, ib, ic)
+      }
+      if (keep.length < index.count) geom.setIndex(keep)
+    })
+    return cloned
+  }, [gltf.scene])
+  const bones = useMemo(() => {
+    const found = new Map<string, THREE.Bone>()
+    rig.traverse((obj) => {
+      if ((obj as THREE.Bone).isBone) found.set(obj.name, obj as THREE.Bone)
+    })
+    return found
+  }, [rig])
+  const rest = useMemo(() => {
+    const poses = new Map<string, THREE.Quaternion>()
+    for (const name of [...EAR_BONES, ...FOOT_BONES]) {
+      const bone = bones.get(name)
+      if (bone) poses.set(name, bone.quaternion.clone())
+    }
+    return poses
+  }, [bones])
+
+  const rigRoot = useRef<THREE.Group>(null)
   const root = useRef<THREE.Group>(null)
   const body = useRef<THREE.Group>(null)
-  const face = useRef<THREE.Group>(null)
-  const tail = useRef<THREE.Group>(null)
-  const earL = useRef<THREE.Group>(null)
-  const earR = useRef<THREE.Group>(null)
-  const shine = useRef<THREE.Mesh>(null)
-  const shineMat = useRef<THREE.MeshBasicMaterial>(null)
   const vel = useRef(0)
-  const hop = useRef(0)
   const squash = useRef(0)
-  const shadow = useShadowMap()
-
-  const tailGeo = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.28, 0.18, -0.18),
-      new THREE.Vector3(0.42, 0.58, -0.06),
-      new THREE.Vector3(0.12, 0.92, 0.08),
-      new THREE.Vector3(-0.08, 0.74, 0.14),
-    ])
-    return new THREE.TubeGeometry(curve, 28, 0.105, 12, false)
-  }, [])
-
-  const smileGeo = useMemo(() => {
-    const curve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(-0.18, 0.02, 0),
-      new THREE.Vector3(0, -0.12, 0.04),
-      new THREE.Vector3(0.18, 0.02, 0),
-    )
-    return new THREE.TubeGeometry(curve, 16, 0.04, 8, false)
-  }, [])
-
-  useEffect(() => () => {
-    tailGeo.dispose()
-    smileGeo.dispose()
-  }, [tailGeo, smileGeo])
+  const shadowMap = useShadowMap()
+  const { actions } = useAnimations(gltf.animations, rigRoot)
+  const earOffset = useMemo(() => new THREE.Quaternion(), [])
+  const footOffset = useMemo(() => new THREE.Quaternion(), [])
+  const axisZ = useMemo(() => new THREE.Vector3(0, 0, 1), [])
+  const axisX = useMemo(() => new THREE.Vector3(1, 0, 0), [])
 
   useEffect(() => {
-    jumpRef.current = () => { vel.current = 4.4 }
+    const action = actions.Rabinho_Balanco
+    if (!action) return
+    action.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.35).play()
+    return () => {
+      action.fadeOut(0.2)
+    }
+  }, [actions])
+
+  useEffect(() => {
+    if (!jumpRef) return
+    jumpRef.current = () => {
+      vel.current = 4.4
+    }
   }, [jumpRef])
 
   useFrame((state, delta) => {
-    const dt = Math.min(delta, 0.05)
+    const dt = Math.min(delta, 0.033)
     const t = state.clock.elapsedTime
-    const px = state.pointer.x
-    const py = state.pointer.y
-
-    const nextHop = hop.current + vel.current * dt
-    const nextVel = vel.current - 16 * dt
-    if (nextHop <= 0 && hop.current > 0.08) squash.current = 0.16
-    hop.current = Math.max(0, nextHop)
-    vel.current = hop.current === 0 ? 0 : nextVel
-    if (squash.current > 0) squash.current = Math.max(0, squash.current - dt)
-
-    if (root.current) {
-      root.current.position.y = Math.sin(t * 1.45) * 0.045 + hop.current
-      root.current.rotation.y = Math.sin(t * 0.45) * 0.22 + px * 0.2
-      root.current.rotation.x = py * 0.05
+    vel.current -= 16 * dt
+    const y = (root.current?.position.y ?? 0) + vel.current * dt
+    if (y <= 0) {
+      if (vel.current < -1) squash.current = Math.min(1, -vel.current / 9)
+      vel.current = 0
+      if (root.current) root.current.position.y = 0
+    } else if (root.current) {
+      root.current.position.y = y
     }
 
+    const hop = root.current?.position.y ?? 0
+    const air = Math.min(1, hop / 0.45)
+    const landing = Math.max(0, squash.current - dt * 3.2)
+    squash.current = landing
     if (body.current) {
-      const breathe = Math.sin(t * 2.15)
-      const squashAmt = squash.current > 0 ? Math.sin((squash.current / 0.16) * Math.PI) * 0.07 : 0
-      body.current.scale.set(1 - breathe * 0.012 + squashAmt, 1 + breathe * 0.02 - squashAmt, 1)
+      const breathe = 1 + Math.sin(t * 2.1) * 0.015
+      body.current.scale.set(
+        (1 + landing * 0.08) * breathe,
+        (1 - landing * 0.1 + air * 0.04) * breathe,
+        1,
+      )
+    }
+    if (root.current) {
+      const lookX = (state.pointer.x || 0) * 0.22
+      const lookY = (state.pointer.y || 0) * 0.08
+      root.current.rotation.y = THREE.MathUtils.lerp(root.current.rotation.y, lookX, 0.08)
+      root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, -lookY, 0.08)
     }
 
-    if (tail.current) tail.current.rotation.z = Math.sin(t * 3.1) * 0.42
-
-    const cycle = t % 4.2
-    const twitch = cycle < 0.16 ? Math.sin((cycle / 0.16) * Math.PI) : 0
-    if (earL.current) earL.current.rotation.z = 0.46 - twitch * 0.4
-    if (earR.current) earR.current.rotation.z = -0.46 + twitch * 0.28
-
-    if (face.current) {
-      face.current.position.x += (px * 0.1 - face.current.position.x) * 0.08
-      face.current.position.y += (-py * 0.05 - face.current.position.y) * 0.08
+    const earL = bones.get('Orelha_E')
+    const earR = bones.get('Orelha_D')
+    const restL = rest.get('Orelha_E')
+    const restR = rest.get('Orelha_D')
+    if (earL && restL) {
+      earOffset.setFromAxisAngle(axisZ, Math.sin(t * 2.4) * 0.08)
+      earL.quaternion.copy(restL).multiply(earOffset)
     }
-
-    if (shine.current && shineMat.current) {
-      const u = (t % 4.6) / 4.6
-      const moving = u < 0.18
-      shine.current.position.x = -0.4 + (moving ? (u / 0.18) * 0.24 : 0.24)
-      shineMat.current.opacity = moving ? 0.75 * (1 - u / 0.18) : 0
+    if (earR && restR) {
+      earOffset.setFromAxisAngle(axisZ, Math.sin(t * 2.4 + 0.6) * -0.08)
+      earR.quaternion.copy(restR).multiply(earOffset)
     }
+    FOOT_BONES.forEach((name, index) => {
+      const bone = bones.get(name)
+      const pose = rest.get(name)
+      if (!bone || !pose) return
+      footOffset.setFromAxisAngle(axisX, Math.sin(t * 3.2 + index * Math.PI) * 0.1 * (1 - air))
+      bone.quaternion.copy(pose).multiply(footOffset)
+    })
   })
 
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.48, 0.05]}>
-        <planeGeometry args={[2.5, 1.25]} />
-        <meshBasicMaterial map={shadow} transparent depthWrite={false} />
-      </mesh>
-
+      {shadow && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.22, 0.05]}>
+          <planeGeometry args={[2.5, 1.25]} />
+          <meshBasicMaterial map={shadowMap} transparent depthWrite={false} />
+        </mesh>
+      )}
       <group ref={root}>
         <group ref={body}>
-          <mesh scale={[1.05, 1.22, 0.78]}>
-            <sphereGeometry args={[1, 40, 32]} />
-            <meshStandardMaterial color="#1a4512" roughness={0.58} metalness={0.04} />
-          </mesh>
-          <mesh position={[-0.28, 0.55, 0.42]} scale={[0.28, 0.14, 0.08]} rotation={[0, 0, -0.4]}>
-            <sphereGeometry args={[1, 16, 12]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.12} />
-          </mesh>
-
-          <mesh position={[0, -0.04, 0.42]} scale={[0.8, 0.98, 0.62]}>
-            <sphereGeometry args={[1, 40, 32]} />
-            <meshStandardMaterial
-              color="#d4e24a"
-              roughness={0.38}
-              metalness={0.02}
-              emissive="#c8d832"
-              emissiveIntensity={0.07}
-            />
-          </mesh>
-          <mesh position={[-0.18, 0.32, 0.92]} scale={[0.2, 0.1, 0.05]} rotation={[0, 0, -0.3]}>
-            <sphereGeometry args={[1, 16, 12]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.22} />
-          </mesh>
-
-          <mesh position={[0, -0.62, 0.86]} scale={[0.3, 0.3, 0.24]}>
-            <sphereGeometry args={[1, 28, 22]} />
-            <meshStandardMaterial color="#a06030" roughness={0.42} metalness={0.08} />
-          </mesh>
-          <mesh position={[-0.08, -0.52, 1.06]} scale={[0.08, 0.05, 0.03]}>
-            <sphereGeometry args={[1, 14, 10]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.35} />
-          </mesh>
-
-          <mesh position={[-0.34, -1.16, 0.62]} scale={[0.3, 0.16, 0.22]}>
-            <sphereGeometry args={[1, 20, 16]} />
-            <meshStandardMaterial color="#1a4512" roughness={0.6} />
-          </mesh>
-          <mesh position={[0.34, -1.16, 0.62]} scale={[0.3, 0.16, 0.22]}>
-            <sphereGeometry args={[1, 20, 16]} />
-            <meshStandardMaterial color="#1a4512" roughness={0.6} />
-          </mesh>
-        </group>
-
-        <group ref={tail} position={[0.92, -0.05, 0.05]}>
-          <mesh geometry={tailGeo}>
-            <meshStandardMaterial color="#1a4512" roughness={0.58} />
-          </mesh>
-        </group>
-
-        <group ref={face}>
-          <group ref={earL} position={[-0.52, 1.02, 0.02]} rotation={[0.12, 0, 0.46]}>
-            <mesh rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[0.3, 0.62, 4]} />
-              <meshStandardMaterial color="#1a4512" roughness={0.55} />
-            </mesh>
-            <mesh position={[0.02, -0.02, 0.08]} scale={0.58} rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[0.3, 0.62, 4]} />
-              <meshStandardMaterial color="#f4a090" roughness={0.7} />
-            </mesh>
+          <group ref={rigRoot} rotation={[0, -Math.PI / 2, 0]} scale={2.25}>
+            <primitive object={rig} />
           </group>
-          <group ref={earR} position={[0.52, 1.02, 0.02]} rotation={[0.12, 0, -0.46]}>
-            <mesh rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[0.3, 0.62, 4]} />
-              <meshStandardMaterial color="#1a4512" roughness={0.55} />
-            </mesh>
-            <mesh position={[-0.02, -0.02, 0.08]} scale={0.58} rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[0.3, 0.62, 4]} />
-              <meshStandardMaterial color="#f4a090" roughness={0.7} />
-            </mesh>
-          </group>
-
-          <RoundedBox args={[0.48, 0.28, 0.08]} radius={0.08} smoothness={4} position={[-0.26, 0.42, 1.12]}>
-            <meshPhysicalMaterial color="#141414" roughness={0.16} metalness={0.55} clearcoat={1} clearcoatRoughness={0.12} />
-          </RoundedBox>
-          <RoundedBox args={[0.48, 0.28, 0.08]} radius={0.08} smoothness={4} position={[0.26, 0.42, 1.12]}>
-            <meshPhysicalMaterial color="#141414" roughness={0.16} metalness={0.55} clearcoat={1} clearcoatRoughness={0.12} />
-          </RoundedBox>
-          <mesh position={[0, 0.42, 1.1]}>
-            <boxGeometry args={[0.1, 0.06, 0.06]} />
-            <meshStandardMaterial color="#141414" roughness={0.3} metalness={0.4} />
-          </mesh>
-          <mesh position={[-0.56, 0.42, 0.92]} rotation={[0, 0.4, 0]}>
-            <boxGeometry args={[0.22, 0.035, 0.04]} />
-            <meshStandardMaterial color="#141414" metalness={0.4} roughness={0.3} />
-          </mesh>
-          <mesh position={[0.56, 0.42, 0.92]} rotation={[0, -0.4, 0]}>
-            <boxGeometry args={[0.22, 0.035, 0.04]} />
-            <meshStandardMaterial color="#141414" metalness={0.4} roughness={0.3} />
-          </mesh>
-          <mesh ref={shine} position={[-0.38, 0.5, 1.18]}>
-            <boxGeometry args={[0.14, 0.04, 0.02]} />
-            <meshBasicMaterial ref={shineMat} color="#ffffff" transparent opacity={0.5} depthWrite={false} />
-          </mesh>
-
-          <mesh position={[0, 0.2, 1.24]} scale={[0.1, 0.065, 0.05]}>
-            <sphereGeometry args={[1, 14, 12]} />
-            <meshStandardMaterial color="#1a3008" roughness={0.4} />
-          </mesh>
-          <mesh geometry={smileGeo} position={[0, 0.04, 1.22]}>
-            <meshStandardMaterial color="#1a3008" roughness={0.4} />
-          </mesh>
-          {WHISKERS.map(([a, b]) => (
-            <Whisker key={`${a[0]}-${a[1]}-${b[1]}`} a={a} b={b} />
-          ))}
         </group>
       </group>
     </group>
   )
 }
+
+useGLTF.preload(mascoteUrl)
 
 export function Mascot3D() {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -361,7 +267,9 @@ export function Mascot3D() {
         <directionalLight position={[3.2, 4.2, 4.5]} intensity={2.5} color="#fff8ec" />
         <directionalLight position={[-3.2, 1.4, -2]} intensity={0.7} color="#b7d84e" />
         <pointLight position={[0.2, 0.5, 2.6]} intensity={1.4} distance={7} color="#ffffff" />
-        <AvocadoCat jumpRef={jumpRef} />
+        <Suspense fallback={null}>
+          <AvocadoCat jumpRef={jumpRef} />
+        </Suspense>
       </Canvas>
       {bubble && (
         <div key={bubble.id} className={styles.bubble} role="status">
